@@ -48,14 +48,20 @@ export default function Home({ level, currentExperience, challengesCompleted}: H
   )
 }
 
+function parseCookieNumber(value: string | undefined, fallback: number) {
+  const parsed = Number(value);
+
+  return value && Number.isFinite(parsed) ? parsed : fallback;
+}
+
 export const getServerSideProps: GetServerSideProps = async ({ req }) => {
   const { level, currentExperience, challengesCompleted } = req.cookies;
 
   return {
     props: {
-      level: Number(level),
-      currentExperience: Number(currentExperience),
-      challengesCompleted: Number(challengesCompleted),
+      level: parseCookieNumber(level, 1),
+      currentExperience: parseCookieNumber(currentExperience, 0),
+      challengesCompleted: parseCookieNumber(challengesCompleted, 0),
     }
   }
 };

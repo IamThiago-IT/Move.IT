@@ -30,10 +30,14 @@ interface ChallengesProviderProps {
 
 export const ChallengesContext = createContext({} as ChallengesContextData)
 
+function toFiniteNumber(value: number, fallback: number) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
 export function ChallengesProvider({ children, ...rest }: ChallengesProviderProps) {
-  const [level, setLevel] = useState(rest.level ?? 1)
-  const [currentExperience, setCurrentExperience] = useState(rest.currentExperience ?? 0);
-  const [challengesCompleted, setChallengesCompleted] = useState(rest.challengesCompleted ?? 0);
+  const [level, setLevel] = useState(toFiniteNumber(rest.level, 1))
+  const [currentExperience, setCurrentExperience] = useState(toFiniteNumber(rest.currentExperience, 0));
+  const [challengesCompleted, setChallengesCompleted] = useState(toFiniteNumber(rest.challengesCompleted, 0));
   
   const [activeChallenge, setActiveChallenge] = useState<Challenge>(null)
   const [isLevelUpModalOpen, setIsLevelUpModalOpen] = useState(false)
