@@ -1,3 +1,25 @@
 /node_modules
-
 /.next
+/out
+/build
+/coverage
+/test-results
+/playwright-report
+/blob-report
+/tsconfig.tsbuildinfo
+/.npm-cache
+/.token-optimizer
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea
+.vscode/*
+!.vscode/extensions.json
+
+/src/generated/prisma

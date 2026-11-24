@@ -1,0 +1,153 @@
+// Move.it 2.0 database schema.
+// Prisma 7 + PostgreSQL (Neon).
+//
+// Better Auth owns the User/Session/Account/Verification models.
+// App-owned progress columns live on User and are never writable by clients.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // GitHub identity. `username` is normalized to lowercase for stable URLs.
+  username String? @unique
+  githubId String? @unique
+
+  // Server-authoritative progress. Never accept these from the client.
+  totalExperience     Int @default(0)
+  currentExperience   Int @default(0)
+  level               Int @default(1)
+  challengesCompleted Int @default(0)
+
+  // Preferences.
+  theme    String  @default("system")
+  isPublic Boolean @default(true)
+
+  sessions          Session[]
+  accounts          Account[]
+  cycles            PomodoroCycle[]
+  challengeAttempts ChallengeAttempt[]
+
+  @@index([isPublic, totalExperience(sort: Desc), level(sort: Desc), challengesCompleted(sort: Desc), createdAt])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+enum CycleStatus {
+  ACTIVE
+  COMPLETED
+  ABANDONED
+  EXPIRED
+}
+
+enum ChallengeStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  EXPIRED
+}
+
+model PomodoroCycle {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    CycleStatus @default(ACTIVE)
+  startedAt DateTime @default(now())
+  endsAt    DateTime
+  completedAt DateTime?
+  abandonedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Unique while ACTIVE, NULL after the cycle is finalized. PostgreSQL
+  // permits many NULLs, so this enforces one active cycle per user.
+  activeCycleKey String? @unique
+
+  challenge ChallengeAttempt?
+
+  @@index([userId, status])
+  @@index([status, endsAt])
+  @@map("pomodoro_cycle")
+}
+
+model ChallengeAttempt {
+  id          String          @id @default(cuid())
+  cycleId     String          @unique
+  cycle       PomodoroCycle   @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challengeId String
+  type        String
+  description String
+  amount      Int
+  status      ChallengeStatus @default(PENDING)
+  issuedAt    DateTime        @default(now())
+  expiresAt   DateTime
+  completedAt DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([userId, status])
+  @@index([status, expiresAt])
+  @@map("challenge_attempt")
+}
